@@ -1,0 +1,53 @@
+---
+format: gfm
+---
+
+
+
+```{r}
+pkgs <- c("tidyverse", "stats19")
+install_if_missing <- function(p) {
+  if (!requireNamespace(p, quietly = TRUE)) {
+    install.packages(p)
+  }
+}
+invisible(sapply(pkgs, install_if_missing))
+library(tidyverse)
+library(stats19)
+```
+
+
+```{r}
+years <- 2020:2024
+collisions_2020 <- stats19::get_stats19(year = 2020, type = "collision")
+collisions_2020_2024 <- map_dfr(years, ~ stats19::get_stats19(year = .x, type = "collision"))
+dim(collisions_2020_2024)
+casualties_2020_2024 <- map_dfr(years, ~ stats19::get_stats19(year = .x, type = "casualty"))
+dim(casualties_2020_2024)
+casualties_joined <- left_join(
+  casualties_2020_2024,
+  collisions_2020_2024,
+  by = join_by(collision_index == collision_index)
+)
+dim(casualties_joined)
+casualties_sf <- stats19::format_sf(casualties_joined)
+casualties_sf |>
+  sf::st_geometry() |>
+  plot()
+```
+
+
+```{r}
+# Get data for particular geographical area
+library(sf)
+# If you find an open access boundary dataset for Cardiff, Wales, you can use the code below:
+# cardiff_boundary <- sf::st_read(
+#   "https://opendata.arcgis.com/datasets/8f1a5f4f2f1e4b2e8e1e4b5c6f4d3c9c_0.geojson"
+# )
+cardiff_zones <- zonebuilder::zb_zone("Cardiff, UK", n_circles = 4)
+mapview::mapview(cardiff_boundary)
+casualties_cardiff <- casualties_sf |>
+  sf::st_filter(cardiff_boundary, .predicate = sf::st_within)
+dim(casualties_cardiff)
+mapview::mapview(casualties_cardiff)
+```
