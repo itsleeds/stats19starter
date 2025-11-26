@@ -30,7 +30,7 @@ casualties_joined <- left_join(
   by = join_by(collision_index == collision_index)
 )
 dim(casualties_joined)
-casualties_sf <- stats19::format_sf(casualties_joined)
+casualties_sf <- stats19::format_sf(casualties_joined, lonlat = TRUE)
 casualties_sf |>
   sf::st_geometry() |>
   plot()
@@ -45,9 +45,42 @@ library(sf)
 #   "https://opendata.arcgis.com/datasets/8f1a5f4f2f1e4b2e8e1e4b5c6f4d3c9c_0.geojson"
 # )
 cardiff_zones <- zonebuilder::zb_zone("Cardiff, UK", n_circles = 4)
+cardiff_boundary <- sf::st_union(cardiff_zones)
 mapview::mapview(cardiff_boundary)
-casualties_cardiff <- casualties_sf |>
-  sf::st_filter(cardiff_boundary, .predicate = sf::st_within)
+sf::st_crs(cardiff_boundary)
+sf::st_crs(casualties_sf)
+
+casualties_cardiff <- casualties_sf[cardiff_boundary, ]
+# casualties_cardiff <- casualties_sf |>
+#   sf::st_filter(cardiff_boundary, .predicate = sf::st_within)
 dim(casualties_cardiff)
 mapview::mapview(casualties_cardiff)
+sf::write_sf(casualties_cardiff, "casualties_cardiff.gpkg")
+```
+
+
+```{r}
+# find the osmextract and osmactive packages and write code to get road data for Cardiff:
+roads_cardiff <- osmactive::get_travel_network(
+    place = cardiff_boundary,
+    boundary = cardiff_boundary,
+    boundary_type = "clipsrc"
+)
+sf::write_sf(roads_cardiff, "roads_cardiff.gpkg")
+
+plot(sf::st_geometry(roads_cardiff))
+```
+
+
+```{r}
+system("gh release create v1")
+system("gh release upload v1 casualties_cardiff.gpkg roads_cardiff.gpkg")
+```
+
+
+```{r}
+#' https://github.com/itsleeds/stats19starter/releases 
+roads_cardiff <- sf::st_read(
+    "https://github.com/itsleeds/stats19starter/releases/download/v1/roads_cardiff.gpkg"
+)
 ```
